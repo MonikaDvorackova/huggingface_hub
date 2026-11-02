@@ -4348,6 +4348,31 @@ class TestWebhookApi:
             api.get_webhook(webhook_to_delete.id)
 
 
+def test_update_webhook_preserves_omitted_watch_settings(mocker) -> None:
+    existing_webhook = {
+        "id": "webhook-id",
+        "url": "https://webhook.site/old",
+        "job": None,
+        "watched": [{"type": "user", "name": "huggingface"}],
+        "domains": ["repo", "discussion"],
+        "secret": None,
+        "disabled": False,
+    }
+    updated_webhook = {**existing_webhook, "url": "https://webhook.site/new"}
+    mock_session = mocker.patch("huggingface_hub.hf_api.get_session").return_value
+    mock_session.get.return_value.json.return_value = {"webhook": existing_webhook}
+    mock_session.post.return_value.json.return_value = {"webhook": updated_webhook}
+
+    api = HfApi(endpoint=ENDPOINT_STAGING, token=TOKEN)
+    api.update_webhook("webhook-id", url="https://webhook.site/new")
+
+    assert mock_session.post.call_args.kwargs["json"] == {
+        "watched": [{"type": "user", "name": "huggingface"}],
+        "domains": ["repo", "discussion"],
+        "url": "https://webhook.site/new",
+    }
+
+
 @pytest.mark.production
 class TestExpandPropertyType:
     def test_expand_model_property_type_is_up_to_date(self, api_prod: HfApi, repo_factory: RepoFactory):
