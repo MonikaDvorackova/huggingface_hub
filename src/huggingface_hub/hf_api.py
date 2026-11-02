@@ -11378,9 +11378,17 @@ class HfApi:
                 disabled=False,
             ```
         """
-        if watched is None:
-            watched = []
-        watched_dicts = [asdict(item) if isinstance(item, WebhookWatchedItem) else item for item in watched]
+        if watched is None or domains is None:
+            current_webhook = self.get_webhook(webhook_id, token=token)
+            watched_dicts = (
+                [asdict(item) for item in current_webhook.watched]
+                if watched is None
+                else [asdict(item) if isinstance(item, WebhookWatchedItem) else item for item in watched]
+            )
+            domains_to_update = current_webhook.domains if domains is None else domains
+        else:
+            watched_dicts = [asdict(item) if isinstance(item, WebhookWatchedItem) else item for item in watched]
+            domains_to_update = domains
 
         update_json: dict = {"watched": watched_dicts}
         if url is not None and job_id is not None:
@@ -11389,8 +11397,7 @@ class HfApi:
             update_json["url"] = url
         if job_id is not None:
             update_json["jobSourceId"] = job_id
-        if domains is not None:
-            update_json["domains"] = domains
+        update_json["domains"] = domains_to_update
         if secret is not None:
             update_json["secret"] = secret
         if secrets is not None:
